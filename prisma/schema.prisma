@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "mysql"
+  url      = env("DSN")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Report {
+  id           String         @id @default(uuid())
+  createdAt    DateTime       @default(now())
+  payload      Json
+  ReportTask00 ReportTask00?
+  ReportTask10 ReportTask10?
+  ReportTask20 ReportTask20?
+  ReportTask30 ReportTask30?
+  ReportStatus ReportStatus[]
+}
+
+model ReportTask00 {
+  id        String   @id @default(uuid())
+  reportId  String
+  createdAt DateTime @default(now())
+  payload   Json
+  report    Report   @relation(fields: [reportId], references: [id])
+
+  @@unique([reportId], name: "idxInsert")
+}
+
+model ReportTask10 {
+  id        String   @id @default(uuid())
+  reportId  String
+  createdAt DateTime @default(now())
+  payload   Json
+  report    Report   @relation(fields: [reportId], references: [id])
+
+  @@unique([reportId], name: "idxInsert")
+}
+
+model ReportTask20 {
+  id        String   @id @default(uuid())
+  reportId  String
+  createdAt DateTime @default(now())
+  payload   Json
+  report    Report   @relation(fields: [reportId], references: [id])
+
+  @@unique([reportId], name: "idxInsert")
+}
+
+model ReportTask30 {
+  id        String   @id @default(uuid())
+  reportId  String
+  createdAt DateTime @default(now())
+  payload   Json
+  report    Report   @relation(fields: [reportId], references: [id])
+
+  @@unique([reportId], name: "idxInsert")
+}
+
+model ReportStatus {
+  id        String   @id @default(uuid())
+  reportId  String   @unique
+  createdAt DateTime @default(now())
+  task      Task
+  startedOn DateTime
+  endedOn   DateTime
+  error     Boolean
+  payload   Json
+  report    Report   @relation(fields: [reportId], references: [id])
+}
+
+model Trace {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  eType     String
+  eId       String
+  trace     Json
+
+  @@unique([eType, eId], name: "idxInsert")
+}
+
+enum Task {
+  TASK00
+  TASK10
+  TASK20
+  TASK30
+}
