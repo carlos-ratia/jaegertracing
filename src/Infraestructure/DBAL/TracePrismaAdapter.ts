@@ -31,4 +31,26 @@ export class TracePrismaAdapter implements ITraceDAO {
       };
     });
   }
+
+  findByEntityInfo(args: { eType: string; eId: string }): PromiseB<TraceDTO> {
+    return PromiseB.try(() => {
+      return this.adapter.trace.findUnique({
+        rejectOnNotFound: true,
+        where: {
+          idxInsert: {
+            eType: args.eType,
+            eId: args.eId,
+          },
+        },
+      });
+    }).then((trace: Trace) => {
+      return {
+        id: trace.id,
+        createdAt: trace.createdAt,
+        eType: trace.eType,
+        eId: trace.eId,
+        trace: trace.trace as JsonObject,
+      };
+    });
+  }
 }

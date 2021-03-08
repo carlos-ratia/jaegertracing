@@ -1,18 +1,17 @@
 import dotEnv from "dotenv";
 import _ from "lodash";
 import PromiseB from "bluebird";
-
 import { EachMessagePayload, Kafka, logLevel } from "kafkajs";
 import { KafkaMessageTask00DTO } from "../../../Domain/DTO/KafkaMessageTask00DTO";
 import { KafkaMessageTask00Map } from "../../../Domain/Mappers/KafkaMessageTask00Map";
-import { PrismaClientDBAL } from "../../../Infraestructure/DBAL/PrismaClientDBAL";
-import { Trace } from "@prisma/client";
-import {JaegerTracer} from "jaeger-client";
-import {CONTAINER_ENTRY_IDENTIFIER, DependenciesManager} from "../../Dependencies";
-import {FORMAT_HTTP_HEADERS, Span, Tags, SpanContext} from "opentracing";
-import {ContainerBuilder} from "../../Container/ContainerBuilder";
-import {ContainerInterface} from "../../Interface/ContainerInterface";
-
+import {
+  CONTAINER_ENTRY_IDENTIFIER,
+  DependenciesManager,
+} from "../../Dependencies";
+import { Span, Tags } from "opentracing";
+import { ContainerBuilder } from "../../Container/ContainerBuilder";
+import { ContainerInterface } from "../../Interface/ContainerInterface";
+import { ServiceGetSpanFromTrace } from "../../../Domain/Service/ServiceGetSpanFromTrace";
 
 dotEnv.config();
 
@@ -60,46 +59,58 @@ const run = async () => {
   await consumer.subscribe({ topic: topic, fromBeginning: true });
   await consumer.run({
     eachMessage: async (payload: EachMessagePayload) => {
-      PromiseB.try(() => {
-        return new KafkaMessageTask00Map().execute({
+      //MESSAGE
+      const message: KafkaMessageTask00DTO = await new KafkaMessageTask00Map().execute(
+        {
           buffer: payload.message.value,
+        }
+      );
+
+      //SPAN
+      const span: Span = await new ServiceGetSpanFromTrace({
+        jaegerTracer: container.get(CONTAINER_ENTRY_IDENTIFIER.JaegerTracer),
+        traceDAO: container.get(CONTAINER_ENTRY_IDENTIFIER.ITraceDAO),
+      }).execute({
+        nameOperation: "HandlerTask00",
+        eInfo: {
+          eType: "Report",
+          eId: message.after.id,
+        },
+      });
+      span.setTag(Tags.SPAN_KIND_MESSAGING_CONSUMER, true);
+
+      //TASK
+      PromiseB.try(() => {
+        span.log({
+          event: "start",
+          value: { message: message, result: {} },
         });
       })
-        .then((message: KafkaMessageTask00DTO) => {
-          return PrismaClientDBAL.getInstance()
-            .trace.findUnique({
-              rejectOnNotFound: true,
-              where: {
-                idxInsert: {
-                  eType: "Report",
-                  eId: message.after.id,
-                },
-              },
-            })
-            .then((trace: Trace) => {
-              return { message, trace };
-            });
+        .then(() => {
+          //DO TASK
+          //new ServiceTask00({...dependencies, span}).execute({message})
         })
-        .then((state: { message: KafkaMessageTask00DTO; trace: Trace }) => {
-          const tracer: JaegerTracer = container.get(
-              CONTAINER_ENTRY_IDENTIFIER.JaegerTracer
-          );
-          const parentSpanContext: SpanContext | null = tracer.extract(
-              FORMAT_HTTP_HEADERS,
-              state.trace.trace
-          );
-          const span: Span = tracer.startSpan("handler_task_00", {
-            childOf: parentSpanContext ?? undefined,
-            tags: { [Tags.SPAN_KIND]: Tags.SPAN_KIND_RPC_SERVER },
-          });
+        .then(() => {
+          //NEXT
+        })
+        .then((result) => {
           span.log({
-            event: "start",
-            value: state,
+            event: "finish",
+            value: { message: message, result: result },
           });
+        })
+        .then(() => {
           span.setTag(Tags.HTTP_STATUS_CODE, 200);
           span.finish();
         })
         .catch((error) => {
+          span.setTag(Tags.ERROR, true);
+          span.setTag(Tags.HTTP_STATUS_CODE, error.statusCode || 500);
+          span.log({
+            event: "error",
+            "error.object": error,
+          });
+          span.finish();
           console.error(error);
         });
     },

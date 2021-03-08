@@ -4,7 +4,7 @@ import { Span, Tags } from "opentracing";
 import { IAction } from "../Interface/IAction";
 import { CONTAINER_ENTRY_IDENTIFIER } from "../Dependencies";
 import { ContainerInterface } from "../Interface/ContainerInterface";
-import { JaegerTracer } from "jaeger-client";
+import { ServiceGetSpanFromParentSpanContext } from "../../Domain/Service/ServiceGetSpanFromParentSpanContext";
 
 export abstract class ActionBase implements IAction {
   private readonly _container: ContainerInterface;
@@ -17,21 +17,37 @@ export abstract class ActionBase implements IAction {
     this._container = args.container;
   }
 
-  call = (req: Request, res: Response, next: NextFunction): PromiseB<void> => {
-    const tracer: JaegerTracer = this.container.get(
-      CONTAINER_ENTRY_IDENTIFIER.JaegerTracer
-    );
-    const span: Span = tracer.startSpan("http_server", {
-      childOf: res.locals.parentSpanContext,
-      tags: { [Tags.SPAN_KIND]: Tags.SPAN_KIND_RPC_SERVER },
+  call = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    const span: Span = await new ServiceGetSpanFromParentSpanContext({
+      jaegerTracer: this.container.get(CONTAINER_ENTRY_IDENTIFIER.JaegerTracer),
+    }).execute({
+      nameOperation: "HttpServer",
+      parentSpanContext: res.locals.parentSpanContext,
     });
+    span.setTag(Tags.SPAN_KIND_MESSAGING_PRODUCER, true);
+
     return PromiseB.try(() => {
-      return this.doCall(req, res, span);
+      span.log({
+        event: "start",
+        value: {
+          action: this.constructor.name,
+        },
+      });
     })
+      .then(() => {
+        return this.doCall(req, res, span);
+      })
       .then((result: any) => {
         span.log({
-          event: this.constructor.name,
-          value: result,
+          event: "finish",
+          value: {
+            action: this.constructor.name,
+            result: result,
+          },
         });
         return result;
       })

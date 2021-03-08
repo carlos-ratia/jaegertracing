@@ -6,8 +6,8 @@ import { CONTAINER_ENTRY_IDENTIFIER } from "../Dependencies";
 import { ContainerInterface } from "../Interface/ContainerInterface";
 import { Span } from "opentracing";
 import { ReportDTO } from "../../Domain/DTO/ReportDTO";
-import { IEventManager } from "../../Domain/Interface/IEventManager";
-import { EVENT_DOMAIN_IDENTIFIER } from "../EventHandler";
+import { ServiceSaveTraceForEntity } from "../../Domain/Service/ServiceSaveTraceForEntity";
+import { TraceDAO } from "../../Domain/Repository/TraceDAO";
 
 export class CreateReport extends ActionBase {
   constructor(args: { container: ContainerInterface }) {
@@ -28,21 +28,24 @@ export class CreateReport extends ActionBase {
         },
       })
       .then((dto) => {
-        const eventManager: IEventManager = this.container.get(
-          CONTAINER_ENTRY_IDENTIFIER.IEventManager
-        );
-        eventManager.emit({
-          eventDTO: {
-            eventId: EVENT_DOMAIN_IDENTIFIER.EVENT_TRACE_CREATE,
-            payload: {
-              span: span,
-              eType: "Report",
+        return PromiseB.try(() => {
+          return new ServiceSaveTraceForEntity({
+            traceDAO: new TraceDAO({
+              adapter: this.container.get(CONTAINER_ENTRY_IDENTIFIER.ITraceDAO),
+            }),
+            jaegerTracer: this.container.get(
+              CONTAINER_ENTRY_IDENTIFIER.JaegerTracer
+            ),
+          }).execute({
+            span: span,
+            entityInfo: {
               eId: dto.id,
+              eType: "Report",
             },
-            ts_ms: Date.now(),
-          },
+          });
+        }).then(() => {
+          return dto;
         });
-        return dto;
       });
   }
 }
