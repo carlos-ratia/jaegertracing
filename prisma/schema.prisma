@@ -73,7 +73,7 @@ model ReportStatus {
   report    Report   @relation(fields: [reportId], references: [id])
 }
 
-model Trace {
+model ReportTrace {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   eType     String

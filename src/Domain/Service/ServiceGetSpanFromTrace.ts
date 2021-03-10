@@ -1,15 +1,15 @@
 import { FORMAT_HTTP_HEADERS, Span, SpanContext } from "opentracing";
 import PromiseB from "bluebird";
 import { JaegerTracer } from "jaeger-client";
-import { ITraceDAO } from "../Interface/ITraceDAO";
+import { IReportTraceDAO } from "../Interface/IReportTraceDAO";
 import { TraceDTO } from "../DTO/TraceDTO";
 import { ServiceGetSpanFromParentSpanContext } from "./ServiceGetSpanFromParentSpanContext";
 
 export class ServiceGetSpanFromTrace {
   private readonly _jaegerTracer: JaegerTracer;
-  private readonly _traceDAO: ITraceDAO;
+  private readonly _traceDAO: IReportTraceDAO;
 
-  get traceDAO(): ITraceDAO {
+  get traceDAO(): IReportTraceDAO {
     return this._traceDAO;
   }
 
@@ -17,19 +17,19 @@ export class ServiceGetSpanFromTrace {
     return this._jaegerTracer;
   }
 
-  constructor(args: { jaegerTracer: JaegerTracer; traceDAO: ITraceDAO }) {
+  constructor(args: { jaegerTracer: JaegerTracer; traceDAO: IReportTraceDAO }) {
     this._jaegerTracer = args.jaegerTracer;
     this._traceDAO = args.traceDAO;
   }
 
   execute(args: {
     nameOperation: string;
-    eInfo: { eType: string; eId: string };
+    entityTraceInfo: { eType: string; eId: string };
   }): PromiseB<Span> {
     return PromiseB.try(() => {
       return this.getTrace({
-        eInfo: {
-          ...args.eInfo,
+        entityTraceInfo: {
+          ...args.entityTraceInfo,
         },
       });
     }).then((trace: TraceDTO) => {
@@ -41,11 +41,11 @@ export class ServiceGetSpanFromTrace {
   }
 
   protected getTrace(args: {
-    eInfo: { eType: string; eId: string };
+    entityTraceInfo: { eType: string; eId: string };
   }): PromiseB<TraceDTO> {
-    return this.traceDAO.findByEntityInfo({
-      eType: args.eInfo.eType,
-      eId: args.eInfo.eId,
+    return this.traceDAO.findByEntityTraceInfo({
+      eType: args.entityTraceInfo.eType,
+      eId: args.entityTraceInfo.eId,
     });
   }
 

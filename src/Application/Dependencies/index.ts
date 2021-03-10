@@ -4,7 +4,7 @@ import { initTracer, TracingConfig, TracingOptions } from "jaeger-client";
 import { ContainerInterface } from "../Interface/ContainerInterface";
 import { ContainerBuilder } from "../Container/ContainerBuilder";
 import { EventManager } from "../../Infraestructure/Event/EventManager";
-import { TracePrismaAdapter } from "../../Infraestructure/DBAL/TracePrismaAdapter";
+import { ReportTracePrismaAdapter } from "../../Infraestructure/DBAL/ReportTracePrismaAdapter";
 import { ReportTask00PrismaAdapter } from "../../Infraestructure/DBAL/ReportTask00PrismaAdapter";
 import { ReportTask10PrismaAdapter } from "../../Infraestructure/DBAL/ReportTask10PrismaAdapter";
 
@@ -37,7 +37,7 @@ const DependenciesManager = (containerBuilder: ContainerBuilder) => {
     {
       key: CONTAINER_ENTRY_IDENTIFIER.ITraceDAO,
       value: (_container: ContainerInterface) => {
-        return new TracePrismaAdapter({
+        return new ReportTracePrismaAdapter({
           adapter: PrismaClientDBAL.getInstance(),
         });
       },

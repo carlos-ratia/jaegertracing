@@ -7,7 +7,7 @@ import { ContainerInterface } from "../Interface/ContainerInterface";
 import { Span } from "opentracing";
 import { ReportDTO } from "../../Domain/DTO/ReportDTO";
 import { ServiceSaveTraceBySpanAndEntityInfo } from "../../Domain/Service/ServiceSaveTraceBySpanAndEntityInfo";
-import { TraceDAO } from "../../Domain/Repository/TraceDAO";
+import { ReportTraceDAO } from "../../Domain/Repository/ReportTraceDAO";
 
 export class CreateReport extends ActionBase {
   constructor(args: { container: ContainerInterface }) {
@@ -30,7 +30,7 @@ export class CreateReport extends ActionBase {
       .then((dto) => {
         return PromiseB.try(() => {
           return new ServiceSaveTraceBySpanAndEntityInfo({
-            traceDAO: new TraceDAO({
+            traceDAO: new ReportTraceDAO({
               adapter: this.container.get(CONTAINER_ENTRY_IDENTIFIER.ITraceDAO),
             }),
             jaegerTracer: this.container.get(

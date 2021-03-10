@@ -1,11 +1,11 @@
-import { PrismaClient, Trace } from "@prisma/client";
+import { PrismaClient, ReportTrace } from "@prisma/client";
 import PromiseB from "bluebird";
 import { JsonObject } from "../../Domain/Types/JsonObject";
 import { TraceCreateInput } from "../../Domain/DTO/TraceCreateInput";
-import { ITraceDAO } from "../../Domain/Interface/ITraceDAO";
+import { IReportTraceDAO } from "../../Domain/Interface/IReportTraceDAO";
 import { TraceDTO } from "../../Domain/DTO/TraceDTO";
 
-export class TracePrismaAdapter implements ITraceDAO {
+export class ReportTracePrismaAdapter implements IReportTraceDAO {
   private readonly _adapter: PrismaClient;
 
   get adapter(): PrismaClient {
@@ -18,10 +18,10 @@ export class TracePrismaAdapter implements ITraceDAO {
 
   create(args: { data: TraceCreateInput }): PromiseB<TraceDTO> {
     return PromiseB.try(() => {
-      return this.adapter.trace.create({
+      return this.adapter.reportTrace.create({
         data: args.data,
       });
-    }).then((trace: Trace) => {
+    }).then((trace: ReportTrace) => {
       return {
         id: trace.id,
         createdAt: trace.createdAt,
@@ -32,9 +32,9 @@ export class TracePrismaAdapter implements ITraceDAO {
     });
   }
 
-  findByEntityInfo(args: { eType: string; eId: string }): PromiseB<TraceDTO> {
+  findByEntityTraceInfo(args: { eType: string; eId: string }): PromiseB<TraceDTO> {
     return PromiseB.try(() => {
-      return this.adapter.trace.findUnique({
+      return this.adapter.reportTrace.findUnique({
         rejectOnNotFound: true,
         where: {
           idxInsert: {
@@ -43,7 +43,7 @@ export class TracePrismaAdapter implements ITraceDAO {
           },
         },
       });
-    }).then((trace: Trace) => {
+    }).then((trace: ReportTrace) => {
       return {
         id: trace.id,
         createdAt: trace.createdAt,

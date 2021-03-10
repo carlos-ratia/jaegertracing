@@ -4,4 +4,5 @@ import { ReportDTO } from "../DTO/ReportDTO";
 
 export interface IReportDAO {
   create(args: { data: ReportCreateInput }): PromiseB<ReportDTO>;
+  findById(args: { id: string }): PromiseB<ReportDTO>;
 }

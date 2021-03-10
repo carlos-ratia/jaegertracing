@@ -4,16 +4,20 @@ import { Span, Tags } from "opentracing";
 import { ReportDTO } from "../DTO/ReportDTO";
 import { KafkaMessage } from "kafkajs";
 import { ServiceSaveTraceBySpanAndEntityInfo } from "./ServiceSaveTraceBySpanAndEntityInfo";
-import { TraceDAO } from "../Repository/TraceDAO";
+import { ReportTraceDAO } from "../Repository/ReportTraceDAO";
 import { CONTAINER_ENTRY_IDENTIFIER } from "../../Application/Dependencies";
 import { TraceDTO } from "../DTO/TraceDTO";
 import { ServiceGetSpanFromTrace } from "./ServiceGetSpanFromTrace";
+import { SpanNull } from "../Models/SpanNull";
+import { ErrorNoTracing } from "../Error/ErrorNoTracing";
+import { BadMethodCallException } from "../Error/BadMethodCallException";
+import { ReportDAO } from "../Repository/ReportDAO";
 
 export abstract class ServiceTaskBase<T, Q, R> {
   private readonly _container: ContainerInterface;
   private _message: T | undefined;
   private _report: ReportDTO | undefined;
-  private _span: Span | undefined;
+  private _span: Span | SpanNull | undefined;
 
   get container(): ContainerInterface {
     return this._container;
@@ -21,7 +25,9 @@ export abstract class ServiceTaskBase<T, Q, R> {
 
   get message(): T {
     if (this._message === undefined) {
-      throw new Error();
+      throw new BadMethodCallException(
+        `Error in the ${this.constructor.name}::message -> The message is undefined.`
+      );
     }
     return this._message;
   }
@@ -30,20 +36,24 @@ export abstract class ServiceTaskBase<T, Q, R> {
     this._message = value;
   }
 
-  set span(value: Span) {
+  set span(value: Span | SpanNull) {
     this._span = value;
   }
 
-  get span(): Span {
+  get span(): Span | SpanNull {
     if (this._span === undefined) {
-      throw new Error();
+      throw new BadMethodCallException(
+        `Error in the ${this.constructor.name}::span -> The Span is undefined.`
+      );
     }
     return this._span;
   }
 
   get report(): ReportDTO {
     if (this._report === undefined) {
-      throw new Error();
+      throw new BadMethodCallException(
+        `Error in the ${this.constructor.name}::span -> The Span is undefined.`
+      );
     }
     return this._report;
   }
@@ -117,7 +127,19 @@ export abstract class ServiceTaskBase<T, Q, R> {
     kafkaMessage: KafkaMessage;
   }): PromiseB<T>;
 
-  protected abstract getReportDTO(): PromiseB<ReportDTO>;
+  protected getReportDTO(): PromiseB<ReportDTO> {
+    return PromiseB.try(() => {
+      return this.getReportId();
+    }).then((reportId: string) => {
+      return new ReportDAO({
+        adapter: this.container.get(CONTAINER_ENTRY_IDENTIFIER.IReportDAO),
+      }).findById({
+        id: reportId,
+      });
+    });
+  }
+
+  protected abstract getReportId(): PromiseB<string>;
 
   protected getSpan(): PromiseB<Span> {
     return PromiseB.try(() => {
@@ -128,11 +150,15 @@ export abstract class ServiceTaskBase<T, Q, R> {
         traceDAO: this.container.get(CONTAINER_ENTRY_IDENTIFIER.ITraceDAO),
       }).execute({
         nameOperation: this.constructor.name,
-        eInfo: this.getEntityInfo(),
+        entityTraceInfo: this.getTraceEntityInfo(),
       });
-    }).then((span: Span) => {
-      return span.setTag(Tags.SPAN_KIND_MESSAGING_CONSUMER, true);
-    });
+    })
+      .then((span: Span) => {
+        return span.setTag(Tags.SPAN_KIND_MESSAGING_CONSUMER, true);
+      })
+      .catch((_) => {
+        return new SpanNull();
+      });
   }
 
   protected task(): PromiseB<Q> {
@@ -191,15 +217,28 @@ export abstract class ServiceTaskBase<T, Q, R> {
           event: `finish-${this.constructor.name}-trace`,
           value: { message: this.message, result: dto },
         });
+      })
+      .catch((error) => {
+        if (error instanceof ErrorNoTracing) {
+          return;
+        }
+        throw error;
       });
   }
 
+  /**
+   *
+   * @throws ErrorNoTracing
+   */
   protected doSaveTrace(): PromiseB<TraceDTO> {
+    if (this.span instanceof SpanNull) {
+      throw new ErrorNoTracing();
+    }
     return PromiseB.try(() => {
       return this.getNextEntityInfo();
     }).then((entityInfo: { eId: string; eType: string }) => {
       return new ServiceSaveTraceBySpanAndEntityInfo({
-        traceDAO: new TraceDAO({
+        traceDAO: new ReportTraceDAO({
           adapter: this.container.get(CONTAINER_ENTRY_IDENTIFIER.ITraceDAO),
         }),
         jaegerTracer: this.container.get(
@@ -215,12 +254,16 @@ export abstract class ServiceTaskBase<T, Q, R> {
     });
   }
 
-  public getEntityInfo(): { eId: string; eType: string } {
+  public getTraceEntityInfo(): { eId: string; eType: string } {
     return {
-      eId: this.report.id,
-      eType: this.constructor.name,
+      eId: this.getEId(),
+      eType: this.getEType(),
     };
   }
+
+  protected abstract getEId(): string;
+
+  protected abstract getEType(): string;
 
   protected abstract getNextEntityInfo(): PromiseB<{
     eId: string;

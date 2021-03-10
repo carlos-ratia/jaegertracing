@@ -5,7 +5,7 @@ import { EachMessagePayload, Kafka, logLevel } from "kafkajs";
 import { DependenciesManager } from "../../Dependencies";
 import { ContainerBuilder } from "../../Container/ContainerBuilder";
 import { ContainerInterface } from "../../Interface/ContainerInterface";
-import { ServiceTask00 } from "../../../Domain/Service/ServiceTask00";
+import {ServiceTask10} from "../../../Domain/Service/ServiceTask10";
 
 dotEnv.config();
 
@@ -33,8 +33,8 @@ const kafka = new Kafka({
   clientId: "Kafka-clientId-1",
 });
 
-const topic: string = "jaeger-db.db_test.report";
-const consumer = kafka.consumer({ groupId: "ReportTask00" });
+const topic: string = "jaeger-db.db_test.reporttask00";
+const consumer = kafka.consumer({ groupId: "ReportTask10" });
 
 const containerBuilder = new ContainerBuilder();
 
@@ -54,7 +54,7 @@ const run = async () => {
   await consumer.run({
     eachMessage: async (payload: EachMessagePayload): Promise<void> => {
       return PromiseB.try(() => {
-        return new ServiceTask00({
+        return new ServiceTask10({
           container: container,
         }).execute({
           kafkaMessage: payload.message,

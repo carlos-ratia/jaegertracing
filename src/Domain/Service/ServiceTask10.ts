@@ -1,7 +1,6 @@
 import PromiseB from "bluebird";
 import { ServiceTaskBase } from "./ServiceTaskBase";
 import { ContainerInterface } from "../../Application/Interface/ContainerInterface";
-import { ReportDTO } from "../DTO/ReportDTO";
 import { KafkaMessage } from "kafkajs";
 import { CONTAINER_ENTRY_IDENTIFIER } from "../../Application/Dependencies";
 import { ReportTask10DTO } from "../DTO/ReportTask10DTO";
@@ -14,6 +13,7 @@ export class ServiceTask10 extends ServiceTaskBase<
   any,
   ReportTask10DTO
 > {
+  static eType: string = "ServiceTask10";
   constructor(args: { container: ContainerInterface }) {
     super(args);
   }
@@ -26,9 +26,9 @@ export class ServiceTask10 extends ServiceTaskBase<
     });
   }
 
-  protected getReportDTO(): PromiseB<ReportDTO> {
+  protected getReportId(): PromiseB<string> {
     return PromiseB.try(() => {
-      return this.message.after;
+      return this.message.after.reportId;
     });
   }
 
@@ -60,9 +60,17 @@ export class ServiceTask10 extends ServiceTaskBase<
   protected getNextEntityInfo(): PromiseB<{ eId: string; eType: string }> {
     return PromiseB.try(() => {
       return {
-        eId: this.report.id,
+        eId: this.getEId(),
         eType: "END",
       };
     });
+  }
+
+  protected getEType(): string {
+    return ServiceTask10.eType;
+  }
+
+  protected getEId(): string {
+    return this.report.id;
   }
 }

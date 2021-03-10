@@ -22,10 +22,31 @@ export class ReportPrismaAdapter implements IReportDAO {
         data: args.data,
       });
     }).then((report: Report) => {
+      return this.mapperReportToReportDTO({ report });
+    });
+  }
+
+  findById(args: { id: string }): PromiseB<ReportDTO> {
+    return PromiseB.try(() => {
+      return this.adapter.report.findUnique({
+        rejectOnNotFound: true,
+        where: {
+          id: args.id,
+        },
+      });
+    }).then((report: Report) => {
+      return this.mapperReportToReportDTO({ report });
+    });
+  }
+
+  protected mapperReportToReportDTO(args: {
+    report: Report;
+  }): PromiseB<ReportDTO> {
+    return PromiseB.try(() => {
       return {
-        id: report.id,
-        createdAt: report.createdAt,
-        payload: report.payload as JsonObject,
+        id: args.report.id,
+        createdAt: args.report.createdAt,
+        payload: args.report.payload as JsonObject,
       };
     });
   }
