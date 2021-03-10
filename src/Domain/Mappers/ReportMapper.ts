@@ -2,7 +2,7 @@ import { ReportDTO } from "../DTO/ReportDTO";
 import PromiseB from "bluebird";
 import moment from "moment";
 
-export class ReportMap {
+export class ReportMapper {
   constructor() {}
 
   public execute(args: { report: any }): PromiseB<ReportDTO> {

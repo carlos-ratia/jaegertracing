@@ -1,10 +1,7 @@
 import PromiseB from "bluebird";
 import { ReportDTO } from "../DTO/ReportDTO";
 import { ReportCreateInput } from "../DTO/ReportCreateInput";
-
-export interface IReportDAO {
-  create(args: { data: ReportCreateInput }): PromiseB<ReportDTO>;
-}
+import { IReportDAO } from "../Interface/IReportDAO";
 
 export class ReportDAO {
   private readonly _adapter: IReportDAO;

@@ -4,7 +4,7 @@ import { FORMAT_HTTP_HEADERS, Span } from "opentracing";
 import { JaegerTracer } from "jaeger-client";
 import { ITraceDAO } from "../Interface/ITraceDAO";
 
-export class ServiceSaveTraceForEntity {
+export class ServiceSaveTraceBySpanAndEntityInfo {
   private readonly _jaegerTracer: JaegerTracer;
   private readonly _traceDAO: ITraceDAO;
 

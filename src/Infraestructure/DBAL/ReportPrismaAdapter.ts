@@ -1,9 +1,9 @@
-import { IReportDAO } from "../../Domain/Repository/ReportDAO";
 import { PrismaClient, Report } from "@prisma/client";
 import { ReportDTO } from "../../Domain/DTO/ReportDTO";
 import PromiseB from "bluebird";
 import { JsonObject } from "../../Domain/Types/JsonObject";
 import { ReportCreateInput } from "../../Domain/DTO/ReportCreateInput";
+import { IReportDAO } from "../../Domain/Interface/IReportDAO";
 
 export class ReportPrismaAdapter implements IReportDAO {
   private readonly _adapter: PrismaClient;

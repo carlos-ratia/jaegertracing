@@ -1,13 +1,13 @@
 import { Report } from "@prisma/client";
 import { KafkaMessageTask00DTO } from "../DTO/KafkaMessageTask00DTO";
 import { ReportDTO } from "../DTO/ReportDTO";
-import { ReportMap } from "./ReportMap";
+import { ReportMapper } from "./ReportMapper";
 import PromiseB from "bluebird";
 import _ from "lodash";
 import { JsonObject } from "../Types/JsonObject";
 import { KafkaMessageSource } from "../DTO/KafkaMessageSource";
 
-export class KafkaMessageTask00Map {
+export class KafkaMessageTask00Mapper {
   constructor() {}
 
   public execute(args: {
@@ -67,7 +67,7 @@ export class KafkaMessageTask00Map {
         return report;
       })
       .then((report: Report) => {
-        return new ReportMap().execute({ report });
+        return new ReportMapper().execute({ report });
       })
       .catch((_) => {
         return null;

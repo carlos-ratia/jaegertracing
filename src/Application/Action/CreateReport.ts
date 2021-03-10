@@ -6,7 +6,7 @@ import { CONTAINER_ENTRY_IDENTIFIER } from "../Dependencies";
 import { ContainerInterface } from "../Interface/ContainerInterface";
 import { Span } from "opentracing";
 import { ReportDTO } from "../../Domain/DTO/ReportDTO";
-import { ServiceSaveTraceForEntity } from "../../Domain/Service/ServiceSaveTraceForEntity";
+import { ServiceSaveTraceBySpanAndEntityInfo } from "../../Domain/Service/ServiceSaveTraceBySpanAndEntityInfo";
 import { TraceDAO } from "../../Domain/Repository/TraceDAO";
 
 export class CreateReport extends ActionBase {
@@ -29,7 +29,7 @@ export class CreateReport extends ActionBase {
       })
       .then((dto) => {
         return PromiseB.try(() => {
-          return new ServiceSaveTraceForEntity({
+          return new ServiceSaveTraceBySpanAndEntityInfo({
             traceDAO: new TraceDAO({
               adapter: this.container.get(CONTAINER_ENTRY_IDENTIFIER.ITraceDAO),
             }),

@@ -2,16 +2,10 @@ import dotEnv from "dotenv";
 import _ from "lodash";
 import PromiseB from "bluebird";
 import { EachMessagePayload, Kafka, logLevel } from "kafkajs";
-import { KafkaMessageTask00DTO } from "../../../Domain/DTO/KafkaMessageTask00DTO";
-import { KafkaMessageTask00Map } from "../../../Domain/Mappers/KafkaMessageTask00Map";
-import {
-  CONTAINER_ENTRY_IDENTIFIER,
-  DependenciesManager,
-} from "../../Dependencies";
-import { Span, Tags } from "opentracing";
+import { DependenciesManager } from "../../Dependencies";
 import { ContainerBuilder } from "../../Container/ContainerBuilder";
 import { ContainerInterface } from "../../Interface/ContainerInterface";
-import { ServiceGetSpanFromTrace } from "../../../Domain/Service/ServiceGetSpanFromTrace";
+import { ServiceTask00 } from "../../../Domain/Service/ServiceTask00";
 
 dotEnv.config();
 
@@ -58,61 +52,16 @@ const run = async () => {
   await consumer.connect();
   await consumer.subscribe({ topic: topic, fromBeginning: true });
   await consumer.run({
-    eachMessage: async (payload: EachMessagePayload) => {
-      //MESSAGE
-      const message: KafkaMessageTask00DTO = await new KafkaMessageTask00Map().execute(
-        {
-          buffer: payload.message.value,
-        }
-      );
-
-      //SPAN
-      const span: Span = await new ServiceGetSpanFromTrace({
-        jaegerTracer: container.get(CONTAINER_ENTRY_IDENTIFIER.JaegerTracer),
-        traceDAO: container.get(CONTAINER_ENTRY_IDENTIFIER.ITraceDAO),
-      }).execute({
-        nameOperation: "HandlerTask00",
-        eInfo: {
-          eType: "Report",
-          eId: message.after.id,
-        },
+    eachMessage: async (payload: EachMessagePayload): Promise<void> => {
+      return PromiseB.try(() => {
+        return new ServiceTask00({
+          container: container,
+        }).execute({
+          kafkaMessage: payload.message,
+        });
+      }).catch((error) => {
+        console.error(error);
       });
-      span.setTag(Tags.SPAN_KIND_MESSAGING_CONSUMER, true);
-
-      //TASK
-      PromiseB.try(() => {
-        span.log({
-          event: "start",
-          value: { message: message, result: {} },
-        });
-      })
-        .then(() => {
-          //DO TASK
-          //new ServiceTask00({...dependencies, span}).execute({message})
-        })
-        .then(() => {
-          //NEXT
-        })
-        .then((result) => {
-          span.log({
-            event: "finish",
-            value: { message: message, result: result },
-          });
-        })
-        .then(() => {
-          span.setTag(Tags.HTTP_STATUS_CODE, 200);
-          span.finish();
-        })
-        .catch((error) => {
-          span.setTag(Tags.ERROR, true);
-          span.setTag(Tags.HTTP_STATUS_CODE, error.statusCode || 500);
-          span.log({
-            event: "error",
-            "error.object": error,
-          });
-          span.finish();
-          console.error(error);
-        });
     },
   });
 };
