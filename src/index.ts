@@ -1,7 +1,5 @@
 import express, { Application, Request, Response, NextFunction } from "express";
 import createHttpError from "http-errors";
-import dotEnv, { DotenvConfigOutput } from "dotenv";
-import _ from "lodash";
 import { RouteManager } from "./Application/Route";
 import {
   CONTAINER_ENTRY_IDENTIFIER,
@@ -11,50 +9,28 @@ import { MiddlewareApplicationManager } from "./Application/Middleware/Applicati
 import { ContainerBuilder } from "./Application/Container/ContainerBuilder";
 import { ContainerInterface } from "./Application/Interface/ContainerInterface";
 import { EventDomainManager } from "./Application/EventHandler";
-import {
-  LoggerInterface,
-  LogLevels,
-} from "./Infraestructure/Interface/LoggerInterface";
+import { LoggerInterface } from "./Infraestructure/Interface/LoggerInterface";
 import * as http from "http";
+import { ISettings, SettingsManager } from "./Application/Setting";
 
-const config: DotenvConfigOutput = dotEnv.config();
-
+//SET-UP CONTAINER
 const containerBuilder = new ContainerBuilder();
-//TODO
+
 //SET-UP SETTINGS
-//SettingsManager(containerBuilder)
+SettingsManager(containerBuilder);
 
 //SET-UP DEPENDENCIES
 DependenciesManager(containerBuilder);
 
 //Build DI Container instance
 const container: ContainerInterface = containerBuilder.build();
+const settings: ISettings = container.get(CONTAINER_ENTRY_IDENTIFIER.Settings);
 const logger: LoggerInterface = container.get(
   CONTAINER_ENTRY_IDENTIFIER.LoggerInterface
 );
 
-if (config.error !== undefined) {
-  logger.log(LogLevels.ERROR, config.error);
-  process.exit(1);
-}
-
-_.forIn(
-  {
-    SERVER_PORT: process.env.SERVER_PORT,
-    DSN: process.env.DSN,
-  },
-  (value: string | undefined, key: string) => {
-    if (value === undefined || value === null || _.isEmpty(value)) {
-      logger.log(LogLevels.ERROR, {
-        error: `The ${key} is no define in the .env`,
-      });
-      process.exit(1);
-    }
-  }
-);
-
 const app: Application = express();
-const port: number = parseInt(process.env.SERVER_PORT ?? "5000");
+const port: number = parseInt(settings.SERVER_PORT.toString());
 
 //REGISTER EVENSTDOMAIN
 EventDomainManager(container);

@@ -1,4 +1,3 @@
-import dotEnv from "dotenv";
 import PromiseB from "bluebird";
 import { EachMessagePayload, Kafka } from "kafkajs";
 import {
@@ -9,14 +8,13 @@ import { ContainerBuilder } from "../../Container/ContainerBuilder";
 import { ContainerInterface } from "../../Interface/ContainerInterface";
 import { LoggerInterface } from "../../../Infraestructure/Interface/LoggerInterface";
 import { ServiceTask10 } from "../../../Domain/Service/ServiceTask10";
+import { SettingsManager } from "../../Setting";
 
-dotEnv.config();
-
+//SET-UP CONTAINER
 const containerBuilder = new ContainerBuilder();
 
-//TODO
 //SET-UP SETTINGS
-//SettingsManager(containerBuilder)
+SettingsManager(containerBuilder);
 
 //SET-UP DEPENDENCIES
 DependenciesManager(containerBuilder);

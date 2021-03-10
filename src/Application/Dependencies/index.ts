@@ -10,6 +10,7 @@ import { ReportTask10PrismaAdapter } from "../../Infraestructure/DBAL/ReportTask
 import { WinstonLoggerInstance } from "../../Infraestructure/Logger/WinstonLogger";
 import { LoggerInterface } from "../../Infraestructure/Interface/LoggerInterface";
 import { Kafka, logLevel } from "kafkajs";
+import { ISettings } from "../Setting";
 
 const CONTAINER_ENTRY_IDENTIFIER = {
   Settings: Symbol.for("Settings"),
@@ -100,10 +101,13 @@ const DependenciesManager = (containerBuilder: ContainerBuilder) => {
     },
     {
       key: CONTAINER_ENTRY_IDENTIFIER.Kafka,
-      value: (_container: ContainerInterface) => {
-        const broker: string = `${process.env.KAFKA_ADVERTISED_HOST_NAME}:${process.env.KAFKA_PORT}`;
+      value: (container: ContainerInterface) => {
+        const settings: ISettings = container.get(
+          CONTAINER_ENTRY_IDENTIFIER.Settings
+        );
+        const broker: string = `${settings.KAFKA_ADVERTISED_HOST_NAME}:${settings.KAFKA_PORT}`;
         return new Kafka({
-          logLevel: (process.env.KAFKA_LOGLEVEL as unknown) as logLevel,
+          logLevel: (settings.KAFKA_LOGLEVEL as unknown) as logLevel,
           brokers: [broker],
           clientId: "Kafka-clientId-1",
         });
