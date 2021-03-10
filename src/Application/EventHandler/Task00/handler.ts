@@ -1,40 +1,16 @@
 import dotEnv from "dotenv";
-import _ from "lodash";
 import PromiseB from "bluebird";
-import { EachMessagePayload, Kafka, logLevel } from "kafkajs";
-import { DependenciesManager } from "../../Dependencies";
+import { EachMessagePayload, Kafka } from "kafkajs";
+import {
+  CONTAINER_ENTRY_IDENTIFIER,
+  DependenciesManager,
+} from "../../Dependencies";
 import { ContainerBuilder } from "../../Container/ContainerBuilder";
 import { ContainerInterface } from "../../Interface/ContainerInterface";
 import { ServiceTask00 } from "../../../Domain/Service/ServiceTask00";
+import { LoggerInterface } from "../../../Infraestructure/Interface/LoggerInterface";
 
 dotEnv.config();
-
-_.forIn(
-  {
-    KAFKA_LOGLEVEL: process.env.KAFKA_LOGLEVEL,
-    KAFKA_ADVERTISED_HOST_NAME: process.env.KAFKA_ADVERTISED_HOST_NAME,
-    KAFKA_PORT: process.env.KAFKA_PORT,
-  },
-  (value, key) => {
-    if (value === undefined || value === null || _.isEmpty(value)) {
-      console.error(`The ${key} is no define in the .env`);
-      process.exit(1);
-    }
-  }
-);
-
-const errorTypes: string[] = ["unhandledRejection", "uncaughtException"];
-const signalTraps: NodeJS.Signals[] = ["SIGTERM", "SIGINT", "SIGUSR2"];
-const broker: string = `${process.env.KAFKA_ADVERTISED_HOST_NAME}:${process.env.KAFKA_PORT}`;
-
-const kafka = new Kafka({
-  logLevel: (process.env.KAFKA_LOGLEVEL as unknown) as logLevel,
-  brokers: [broker],
-  clientId: "Kafka-clientId-1",
-});
-
-const topic: string = "jaeger-db.db_test.report";
-const consumer = kafka.consumer({ groupId: "ReportTask00" });
 
 const containerBuilder = new ContainerBuilder();
 
@@ -47,6 +23,13 @@ DependenciesManager(containerBuilder);
 
 //Build DI Container instance
 const container: ContainerInterface = containerBuilder.build();
+const logger: LoggerInterface = container.get(
+  CONTAINER_ENTRY_IDENTIFIER.LoggerInterface
+);
+
+const kafka: Kafka = container.get(CONTAINER_ENTRY_IDENTIFIER.Kafka);
+const topic: string = "jaeger-db.db_test.report";
+const consumer = kafka.consumer({ groupId: "ReportTask00" });
 
 const run = async () => {
   await consumer.connect();
@@ -60,19 +43,22 @@ const run = async () => {
           kafkaMessage: payload.message,
         });
       }).catch((error) => {
-        console.error(error);
+        logger.error(error);
       });
     },
   });
 };
 
-run().catch((e) => console.error(`[ERROR] ${e.message}`, e));
+run().catch((error) => logger.error({ error: error }));
+
+const errorTypes: string[] = ["unhandledRejection", "uncaughtException"];
+const signalTraps: NodeJS.Signals[] = ["SIGTERM", "SIGINT", "SIGUSR2"];
 
 errorTypes.map((type: string) => {
   process.on(type, async (e) => {
     try {
-      console.log(`process.on ${type}`);
-      console.error(e);
+      logger.info({ message: `process.on ${type}` });
+      logger.error(e);
       await consumer.disconnect();
       process.exit(0);
     } catch (_) {
@@ -84,7 +70,7 @@ errorTypes.map((type: string) => {
 signalTraps.map((type: NodeJS.Signals) => {
   process.once(type, async () => {
     try {
-      console.log(`signal traps ${type}`);
+      logger.info({ message: `signal traps ${type}` });
       await consumer.disconnect();
     } finally {
       process.kill(process.pid, type);

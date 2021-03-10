@@ -3,16 +3,37 @@ import createHttpError from "http-errors";
 import dotEnv, { DotenvConfigOutput } from "dotenv";
 import _ from "lodash";
 import { RouteManager } from "./Application/Route";
-import { DependenciesManager } from "./Application/Dependencies";
+import {
+  CONTAINER_ENTRY_IDENTIFIER,
+  DependenciesManager,
+} from "./Application/Dependencies";
 import { MiddlewareApplicationManager } from "./Application/Middleware/Application";
 import { ContainerBuilder } from "./Application/Container/ContainerBuilder";
 import { ContainerInterface } from "./Application/Interface/ContainerInterface";
 import { EventDomainManager } from "./Application/EventHandler";
+import {
+  LoggerInterface,
+  LogLevels,
+} from "./Infraestructure/Interface/LoggerInterface";
 
 const config: DotenvConfigOutput = dotEnv.config();
 
+const containerBuilder = new ContainerBuilder();
+//TODO
+//SET-UP SETTINGS
+//SettingsManager(containerBuilder)
+
+//SET-UP DEPENDENCIES
+DependenciesManager(containerBuilder);
+
+//Build DI Container instance
+const container: ContainerInterface = containerBuilder.build();
+const logger: LoggerInterface = container.get(
+  CONTAINER_ENTRY_IDENTIFIER.LoggerInterface
+);
+
 if (config.error !== undefined) {
-  console.error(config.error);
+  logger.log(LogLevels.ERROR, config.error);
   process.exit(1);
 }
 
@@ -23,7 +44,9 @@ _.forIn(
   },
   (value: string | undefined, key: string) => {
     if (value === undefined || value === null || _.isEmpty(value)) {
-      console.error(`The ${key} is no define in the .env`);
+      logger.log(LogLevels.ERROR, {
+        error: `The ${key} is no define in the .env`,
+      });
       process.exit(1);
     }
   }
@@ -31,17 +54,6 @@ _.forIn(
 
 const app: Application = express();
 const port: number = parseInt(process.env.SERVER_PORT ?? "5000");
-const containerBuilder = new ContainerBuilder();
-
-//TODO
-//SET-UP SETTINGS
-//SettingsManager(containerBuilder)
-
-//SET-UP DEPENDENCIES
-DependenciesManager(containerBuilder);
-
-//Build DI Container instance
-const container: ContainerInterface = containerBuilder.build();
 
 //REGISTER EVENSTDOMAIN
 EventDomainManager(container);
@@ -59,15 +71,12 @@ app.use((_req: Request, _res: Response, next: NextFunction) => {
 
 //MW APP ERROR HANDLER
 app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(error);
+  logger.error(error);
   res.status(error.status ?? 500).json({ error });
 });
 
 app.listen(port, () => {
-  console.log(
-    " App is running at http://localhost:%d in %s mode",
-    port,
-    app.get("env")
-  );
-  console.log("  Press CTRL-C to stop\n");
+  logger.info({
+    message: `App is running at http://localhost:${port} ${app.get("env")}`,
+  });
 });

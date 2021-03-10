@@ -12,6 +12,10 @@ import { SpanNull } from "../Models/SpanNull";
 import { ErrorNoTracing } from "../Error/ErrorNoTracing";
 import { BadMethodCallException } from "../Error/BadMethodCallException";
 import { ReportDAO } from "../Repository/ReportDAO";
+import {
+  LogLevel,
+  LogLevels,
+} from "../../Infraestructure/Interface/LoggerInterface";
 
 export abstract class ServiceTaskBase<T, Q, R> {
   private readonly _container: ContainerInterface;
@@ -272,7 +276,13 @@ export abstract class ServiceTaskBase<T, Q, R> {
 
   protected handleError(error: any): PromiseB<void> {
     return PromiseB.try(() => {
-      console.error(error);
+      this.log(LogLevels.ERROR, error);
     });
+  }
+
+  protected log(level: LogLevel, message: object): void {
+    this.container
+      .get(CONTAINER_ENTRY_IDENTIFIER.LoggerInterface)
+      .log(level, message);
   }
 }

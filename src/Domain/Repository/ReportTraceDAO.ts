@@ -18,7 +18,10 @@ export class ReportTraceDAO implements IReportTraceDAO {
     return this.adapter.create(args);
   }
 
-  findByEntityTraceInfo(args: { eType: string; eId: string }): PromiseB<TraceDTO> {
+  findByEntityTraceInfo(args: {
+    eType: string;
+    eId: string;
+  }): PromiseB<TraceDTO> {
     return this.adapter.findByEntityTraceInfo(args);
   }
 }

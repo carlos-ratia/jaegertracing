@@ -7,6 +7,9 @@ import { EventManager } from "../../Infraestructure/Event/EventManager";
 import { ReportTracePrismaAdapter } from "../../Infraestructure/DBAL/ReportTracePrismaAdapter";
 import { ReportTask00PrismaAdapter } from "../../Infraestructure/DBAL/ReportTask00PrismaAdapter";
 import { ReportTask10PrismaAdapter } from "../../Infraestructure/DBAL/ReportTask10PrismaAdapter";
+import { WinstonLoggerInstance } from "../../Infraestructure/Logger/WinstonLogger";
+import { LoggerInterface } from "../../Infraestructure/Interface/LoggerInterface";
+import { Kafka, logLevel } from "kafkajs";
 
 const CONTAINER_ENTRY_IDENTIFIER = {
   Settings: Symbol.for("Settings"),
@@ -16,10 +19,18 @@ const CONTAINER_ENTRY_IDENTIFIER = {
   IReportTask10DAO: Symbol.for("IReportTask10DAO"),
   ITraceDAO: Symbol.for("ITraceDAO"),
   JaegerTracer: Symbol.for("JaegerTracer"),
+  LoggerInterface: Symbol.for("LoggerInterface"),
+  Kafka: Symbol.for("Kafka"),
 };
 
 const DependenciesManager = (containerBuilder: ContainerBuilder) => {
   containerBuilder.addDefinitions([
+    {
+      key: CONTAINER_ENTRY_IDENTIFIER.LoggerInterface,
+      value: (_container: ContainerInterface) => {
+        return WinstonLoggerInstance;
+      },
+    },
     {
       key: CONTAINER_ENTRY_IDENTIFIER.IEventManager,
       value: (_container: ContainerInterface) => {
@@ -60,7 +71,10 @@ const DependenciesManager = (containerBuilder: ContainerBuilder) => {
     },
     {
       key: CONTAINER_ENTRY_IDENTIFIER.JaegerTracer,
-      value: (_container: ContainerInterface) => {
+      value: (container: ContainerInterface) => {
+        const _logger: LoggerInterface = container.get(
+          CONTAINER_ENTRY_IDENTIFIER.LoggerInterface
+        );
         const config: TracingConfig = {
           serviceName: "test",
           sampler: {
@@ -74,14 +88,25 @@ const DependenciesManager = (containerBuilder: ContainerBuilder) => {
         const options: TracingOptions = {
           logger: {
             info(msg: string) {
-              console.log("INFO ", msg);
+              _logger.info({ message: msg });
             },
             error(msg: string) {
-              console.log("ERROR", msg);
+              _logger.error({ error: msg });
             },
           },
         };
         return initTracer(config, options);
+      },
+    },
+    {
+      key: CONTAINER_ENTRY_IDENTIFIER.Kafka,
+      value: (_container: ContainerInterface) => {
+        const broker: string = `${process.env.KAFKA_ADVERTISED_HOST_NAME}:${process.env.KAFKA_PORT}`;
+        return new Kafka({
+          logLevel: (process.env.KAFKA_LOGLEVEL as unknown) as logLevel,
+          brokers: [broker],
+          clientId: "Kafka-clientId-1",
+        });
       },
     },
   ]);

@@ -32,7 +32,10 @@ export class ReportTracePrismaAdapter implements IReportTraceDAO {
     });
   }
 
-  findByEntityTraceInfo(args: { eType: string; eId: string }): PromiseB<TraceDTO> {
+  findByEntityTraceInfo(args: {
+    eType: string;
+    eId: string;
+  }): PromiseB<TraceDTO> {
     return PromiseB.try(() => {
       return this.adapter.reportTrace.findUnique({
         rejectOnNotFound: true,
