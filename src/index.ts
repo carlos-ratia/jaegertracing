@@ -15,6 +15,7 @@ import {
   LoggerInterface,
   LogLevels,
 } from "./Infraestructure/Interface/LoggerInterface";
+import * as http from "http";
 
 const config: DotenvConfigOutput = dotEnv.config();
 
@@ -75,8 +76,39 @@ app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
   res.status(error.status ?? 500).json({ error });
 });
 
-app.listen(port, () => {
+const server: http.Server = app.listen(port, () => {
   logger.info({
     message: `App is running at http://localhost:${port} ${app.get("env")}`,
+  });
+});
+
+const errorTypes: string[] = ["unhandledRejection", "uncaughtException"];
+const signalTraps: NodeJS.Signals[] = ["SIGTERM", "SIGINT", "SIGUSR2"];
+
+errorTypes.map((type: string) => {
+  process.on(type, async (error) => {
+    try {
+      logger.info({ message: `process.on ${type}` });
+      logger.error({ error: error ?? false });
+      await server.close((err: Error | undefined) => {
+        logger.error({ error: err ?? false });
+      });
+      process.exit(0);
+    } catch (_) {
+      process.exit(1);
+    }
+  });
+});
+
+signalTraps.map((type: NodeJS.Signals) => {
+  process.once(type, async () => {
+    try {
+      logger.info({ message: `signal traps ${type}` });
+      await server.close((err: Error | undefined) => {
+        logger.error({ error: err ?? false });
+      });
+    } finally {
+      process.kill(process.pid, type);
+    }
   });
 });
