@@ -32,7 +32,7 @@ const logger: LoggerInterface = container.get(
 const app: Application = express();
 const port: number = parseInt(settings.SERVER_PORT.toString());
 
-//REGISTER EVENSTDOMAIN
+//REGISTER EVENTS DOMAIN
 EventDomainManager(container);
 
 //REGISTER MIDDLEWARE LEVEL APP
@@ -49,7 +49,7 @@ app.use((_req: Request, _res: Response, next: NextFunction) => {
 //MW APP ERROR HANDLER
 app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
   logger.error(error);
-  res.status(error.status ?? 500).json({ error });
+  res.status(error.status ?? 500).json({ error: error });
 });
 
 const server: http.Server = app.listen(port, () => {
@@ -70,7 +70,8 @@ errorTypes.map((type: string) => {
         logger.error({ error: err ?? false });
       });
       process.exit(0);
-    } catch (_) {
+    } catch (err) {
+      logger.error({ error: err ?? false });
       process.exit(1);
     }
   });

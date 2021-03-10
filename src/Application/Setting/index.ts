@@ -23,8 +23,8 @@ const SettingsManager = (containerBuilder: ContainerBuilderInterface) => {
     SERVER_PORT: Joi.number().required(),
     DSN: Joi.string().required(),
     KAFKA_ADVERTISED_HOST_NAME: Joi.string().required(),
-    KAFKA_LOGLEVEL: Joi.number().required(),
-    KAFKA_PORT: Joi.number().required(),
+    KAFKA_LOGLEVEL: Joi.number().required().min(0).max(5),
+    KAFKA_PORT: Joi.number().required().port(),
   });
 
   const validationResult: ValidationResult = schemaSettings.validate({
